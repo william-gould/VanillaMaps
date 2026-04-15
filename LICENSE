@@ -1,0 +1,133 @@
+Source-Available Protected License (SAPL) v1.1
+
+Copyright (c) 2026 webdent
+All rights served.
+
+---
+
+1. Overview
+
+This Software is provided under a source-available but protected model.
+
+The source code is made available strictly for transparency, auditing, and educational purposes.
+
+Access to the source code does NOT grant rights to redistribute, commercially exploit, or create competing works.
+
+---
+
+2. Definitions
+
+"Software" refers to the VanillaMaps plugin/mod, including all source code, binaries, and assets.
+
+"Licensor" refers to webdent.
+
+"Licensee" refers to any individual or entity using or accessing the Software.
+
+---
+
+3. Permitted Use
+
+The Licensee is granted a limited, revocable, non-exclusive, non-transferable license to:
+
+- View and read the source code
+- Use the compiled Software on Minecraft servers
+- Modify the Software privately for personal or internal server use only
+- Use the Software in modpacks, subject to Section 6
+- Monetize server access via in-game ranks or perks
+
+---
+
+4. Prohibited Uses
+
+The Licensee may NOT:
+
+- Redistribute the Software in any form (source or binary)
+- Share, sublicense, lease, or sell the Software
+- Publish modified versions or forks
+- Copy code, logic, structure, or implementation details
+- Create derivative works for distribution
+- Develop competing or substantially similar software
+- Reverse engineer or decompile protected components
+- Bypass licensing or protection mechanisms
+- Include the Software in plugin bundles, server distributions, or hosting packages
+
+Any attempt to replicate or compete with this Software using its source code is strictly prohibited.
+
+---
+
+5. Private Modification
+
+Private modification is permitted strictly under the following conditions:
+
+- Modifications must remain private
+- Modified versions may NOT be distributed or shared
+- Modified versions may NOT be used commercially beyond permitted monetization
+
+---
+
+6. Modpack Distribution
+
+The Software may be included in modpacks only if:
+
+- It remains unmodified
+- Proper attribution to webdent is provided
+- It is not sold as a standalone component
+- It is not used as a primary value driver behind a paywall
+
+---
+
+7. Ownership
+
+All rights, title, and interest remain exclusively with webdent.
+
+This license grants usage rights only and does not transfer ownership.
+
+---
+
+8. Termination
+
+This license terminates immediately upon violation.
+
+Upon termination, the Licensee must:
+
+- Cease all use
+- Delete all copies of the Software
+
+---
+
+9. Enforcement
+
+webdent reserves the right to:
+
+- Monitor usage where technically feasible
+- Issue takedown notices (including DMCA)
+- Revoke access at any time
+- Pursue legal remedies under applicable law
+
+---
+
+10. Disclaimer
+
+The Software is provided "AS IS" without warranty of any kind.
+
+---
+
+11. Limitation of Liability
+
+webdent shall not be liable for any damages, including but not limited to:
+
+- Data loss
+- Server downtime
+- Financial or reputational harm
+
+---
+
+12. Governing Law
+
+This License shall be governed by and interpreted in accordance with the laws of the United Kingdom, regardless of where the Software is used.
+
+---
+
+13. Entire Agreement
+
+This document constitutes the entire agreement between webdent and the Licensee.

@@ -1,0 +1,10 @@
+name: VanillaMaps
+version: '1.0.0'
+main: uk.co.webdent.VanillaMaps.VanillaMapsPlugin
+description: Core plugin for CloseBound SMP.
+api-version: '1.21.11'
+
+permissions:
+  custommaps.use:
+    description: Allows a player to use the custom map commands
+    default: true
