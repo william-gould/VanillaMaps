@@ -26,6 +26,10 @@ public class MapCommand implements BasicCommand {
         this.plugin = plugin;
     }
 
+    public void clearClipboard(UUID playerId) {
+        clipboard.remove(playerId);
+    }
+
     @Override
     public void execute(@NotNull CommandSourceStack source, @NotNull String[] args) {
         CommandSender sender = source.getSender();
@@ -65,6 +69,39 @@ public class MapCommand implements BasicCommand {
                             .deserialize("<red>Your clipboard is empty."));
                 } else {
                     plugin.getMapDataStore().save(player, pixels);
+                }
+                return;
+            }
+
+            if (sub.equals("publish")) {
+                ItemStack held = player.getInventory().getItemInMainHand();
+                if (held != null && held.getType().name().contains("MAP") && held.getItemMeta() instanceof org.bukkit.inventory.meta.MapMeta meta) {
+                    org.bukkit.map.MapView view = meta.getMapView();
+                    if (view != null) {
+                        int mapId = view.getId();
+                        if (plugin.getMapDataStore().isPublished(mapId)) {
+                            player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
+                                    .deserialize("<yellow>This map is already published."));
+                        } else if (plugin.getMapDataStore().loadPixels(held) == null) {
+                            player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
+                                    .deserialize("<red>This map does not contain custom pixels to publish."));
+                        } else {
+                            try {
+                                plugin.getMapDataStore().publish(mapId);
+                                player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
+                                        .deserialize("<green>Map published! It can no longer be edited."));
+                            } catch (Exception e) {
+                                player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
+                                        .deserialize("<red>Failed to publish map."));
+                            }
+                        }
+                    } else {
+                        player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
+                                .deserialize("<red>This map has no view data."));
+                    }
+                } else {
+                    player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
+                            .deserialize("<red>You must be holding a custom map to publish."));
                 }
                 return;
             }
@@ -123,6 +160,15 @@ public class MapCommand implements BasicCommand {
 
                 ItemStack held = player.getInventory().getItemInMainHand();
                 if (held != null && held.getType().name().contains("MAP")) {
+                    // Check if map is published
+                    if (held.getItemMeta() instanceof org.bukkit.inventory.meta.MapMeta editMeta) {
+                        org.bukkit.map.MapView editView = editMeta.getMapView();
+                        if (editView != null && plugin.getMapDataStore().isPublished(editView.getId())) {
+                            player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
+                                    .deserialize("<red>This map has been published and cannot be edited."));
+                            return;
+                        }
+                    }
                     byte[] existingPixels = plugin.getMapDataStore().loadPixels(held);
                     if (existingPixels == null) {
                         player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(
@@ -265,13 +311,15 @@ public class MapCommand implements BasicCommand {
         player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(
                 "<yellow>/map write \"<text>\" <line> [color]</yellow> <gray>- Writes text to a map.</gray>"));
         player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
+                .deserialize("<yellow>/map publish</yellow> <gray>- Locks a map from being edited.</gray>"));
+        player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
                 .deserialize("<yellow>/map help</yellow> <gray>- Displays this help message.</gray>"));
     }
 
     @Override
     public Collection<String> suggest(@NotNull CommandSourceStack source, @NotNull String[] args) {
         if (args.length == 1) {
-            return List.of("copy", "paste", "create", "edit", "write", "help");
+            return List.of("copy", "paste", "create", "edit", "write", "publish", "help");
         }
 
         if (args.length > 1 && args[0].equalsIgnoreCase("write")) {

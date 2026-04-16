@@ -4,6 +4,7 @@ import uk.co.webdent.VanillaMaps.custommaps.CustomMapsModule;
 import uk.co.webdent.VanillaMaps.custommaps.util.ColorPalette;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -12,6 +13,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.Arrays;
+import java.util.List;
 
 public class DrawingGui {
     private final Player player;
@@ -22,7 +24,12 @@ public class DrawingGui {
     private final int ratio;
     private int offsetX = 0;
     private int offsetY = 0;
-    private boolean fillMode = false;
+
+    private final byte backgroundColor;
+    private ToolsGui.Tool activeTool = ToolsGui.Tool.PENCIL;
+    private int firstPointX = -1;
+    private int firstPointY = -1;
+    private byte[] undoSnapshot = null;
 
     public DrawingGui(Player player, int ratio) {
         this(player, ratio, null);
@@ -39,12 +46,13 @@ public class DrawingGui {
         Material defMat = Material.matchMaterial(defaultColorName + "_WOOL");
         if (defMat == null)
             defMat = Material.WHITE_WOOL;
-        this.activeColor = ColorPalette.getMapColor(defMat);
+        this.backgroundColor = ColorPalette.getMapColor(defMat);
+        this.activeColor = this.backgroundColor;
 
         if (existingPixels != null && existingPixels.length == 128 * 128) {
             System.arraycopy(existingPixels, 0, this.pixels, 0, 128 * 128);
         } else {
-            Arrays.fill(this.pixels, this.activeColor);
+            Arrays.fill(this.pixels, this.backgroundColor);
         }
 
         buildCanvas();
@@ -64,11 +72,19 @@ public class DrawingGui {
             int blockX = col + offsetX;
             int blockY = row + offsetY;
 
-            if (blockX < gridWidth && blockY < gridHeight) {
-                int px = blockX * ratio;
-                int py = blockY * ratio;
-                byte color = pixels[py * 128 + px];
-                inventory.setItem(i, ColorPalette.getDisplayItem(color));
+            if (blockX == firstPointX && blockY == firstPointY) {
+                ItemStack item = new ItemStack(Material.LIME_WOOL);
+                ItemMeta meta = item.getItemMeta();
+                if (meta != null) {
+                    meta.displayName(
+                            Component.text("POINT 1", NamedTextColor.GREEN).decoration(TextDecoration.BOLD, true)
+                                    .decoration(TextDecoration.ITALIC, false));
+                    item.setItemMeta(meta);
+                }
+                inventory.setItem(i, item);
+            } else if (blockX < gridWidth && blockY < gridHeight) {
+                byte color = pixels[blockY * ratio * 128 + blockX * ratio];
+                setCanvasItem(i, blockX, blockY, color);
             } else {
                 inventory.setItem(i, new ItemStack(Material.AIR));
             }
@@ -84,82 +100,171 @@ public class DrawingGui {
         inventory.setItem(47, createNamedItem(Material.MAGENTA_GLAZED_TERRACOTTA, "➡ Move Right"));
         inventory.setItem(48, createNamedItem(Material.MAGENTA_GLAZED_TERRACOTTA, "⬇ Move Down"));
 
+        updateToolsButton();
         updateActiveColorDisplay();
-        updateFillModeDisplay();
 
+        inventory.setItem(51, createNamedItem(Material.ARROW, "↩ Undo", NamedTextColor.YELLOW));
         inventory.setItem(52, createNamedItem(Material.RED_DYE, "✖ Cancel", NamedTextColor.RED));
         inventory.setItem(53, createNamedItem(Material.GREEN_DYE, "✔ Save Map", NamedTextColor.GREEN));
     }
 
-    private ItemStack createNamedItem(Material mat, String name) {
-        return createNamedItem(mat, name, NamedTextColor.WHITE);
-    }
-
-    private ItemStack createNamedItem(Material mat, String name, NamedTextColor color) {
-        ItemStack item = new ItemStack(mat);
+    public void updateToolsButton() {
+        ItemStack item = new ItemStack(Material.CHEST);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.displayName(Component.text(name).color(color));
+            meta.displayName(
+                    Component.text("🧰 Tools", NamedTextColor.LIGHT_PURPLE)
+                            .decoration(TextDecoration.ITALIC, false));
+
+            String toolName = activeTool.getDisplayName();
+            meta.lore(List.of(
+                    Component.text("Active: ", NamedTextColor.GRAY)
+                            .decoration(TextDecoration.ITALIC, false)
+                            .append(Component.text(toolName, activeTool.getNameColor())
+                                    .decoration(TextDecoration.ITALIC, false)),
+                    Component.empty(),
+                    Component.text("Left Click → Open tools menu", NamedTextColor.YELLOW)
+                            .decoration(TextDecoration.ITALIC, false),
+                    Component.text("Right Click → Toggle to next tool", NamedTextColor.YELLOW)
+                            .decoration(TextDecoration.ITALIC, false)));
             item.setItemMeta(meta);
         }
-        return item;
+        inventory.setItem(49, item);
     }
 
-    public void updateActiveColorDisplay() {
-        ItemStack activeItem = ColorPalette.getDisplayItem(activeColor);
-        ItemMeta meta = activeItem.getItemMeta();
-        if (meta != null) {
-            meta.displayName(Component.text("✏ Selected Colour (Click to Change)").color(NamedTextColor.GOLD));
-            activeItem.setItemMeta(meta);
-        }
-        inventory.setItem(50, activeItem);
+    public ToolsGui.Tool getActiveTool() {
+        return activeTool;
     }
 
-    public void setActiveColor(byte color) {
-        this.activeColor = color;
-        updateActiveColorDisplay();
+    public void setActiveTool(ToolsGui.Tool tool) {
+        this.activeTool = tool;
+        updateToolsButton();
     }
 
-    public void updateFillModeDisplay() {
-        if (fillMode) {
-            inventory.setItem(49, createNamedItem(Material.WATER_BUCKET, "Fill Mode: ON", NamedTextColor.AQUA));
-        } else {
-            inventory.setItem(49, createNamedItem(Material.BUCKET, "Fill Mode: OFF", NamedTextColor.GRAY));
-        }
+    public void cycleNextTool() {
+        ToolsGui.Tool[] tools = ToolsGui.Tool.values();
+        int next = (activeTool.ordinal() + 1) % tools.length;
+        setActiveTool(tools[next]);
     }
 
-    public void toggleFillMode() {
-        this.fillMode = !this.fillMode;
-        updateFillModeDisplay();
+    public void applyBackground(
+            uk.co.webdent.VanillaMaps.custommaps.gui.generator.BackgroundGenerator.BackgroundType type) {
+        saveUndoSnapshot();
+        uk.co.webdent.VanillaMaps.custommaps.gui.generator.BackgroundGenerator.apply(this, type);
+        buildCanvas();
+        setActiveTool(ToolsGui.Tool.PENCIL);
     }
 
-    public boolean isFillMode() {
-        return fillMode;
+    public void saveUndoSnapshot() {
+        undoSnapshot = new byte[pixels.length];
+        System.arraycopy(pixels, 0, undoSnapshot, 0, pixels.length);
     }
 
-    public byte getActiveColor() {
-        return activeColor;
-    }
-
-    public byte[] getPixelData() {
-        return pixels;
-    }
-
-    public void setPixel(int slot, byte color) {
-        if (slot < 0 || slot >= 45)
+    public void undo() {
+        if (undoSnapshot == null)
             return;
-        inventory.setItem(slot, ColorPalette.getDisplayItem(color));
+        System.arraycopy(undoSnapshot, 0, pixels, 0, pixels.length);
+        undoSnapshot = null;
+        buildCanvas();
+    }
 
+    public int getRatio() {
+        return ratio;
+    }
+
+    public byte getBackgroundColor() {
+        return backgroundColor;
+    }
+
+    public int getFirstPointX() {
+        return firstPointX;
+    }
+
+    public void setLineFirstPoint(int slot) {
         int col = slot % 9;
         int row = slot / 9;
+        this.firstPointX = col + offsetX;
+        this.firstPointY = row + offsetY;
+        buildCanvas();
+    }
 
-        int blockX = col + offsetX;
-        int blockY = row + offsetY;
+    public void clearLineFirstPoint() {
+        this.firstPointX = -1;
+        this.firstPointY = -1;
+        buildCanvas();
+    }
 
+    public void drawLine(int slot2, byte color) {
+        if (firstPointX == -1)
+            return;
+        saveUndoSnapshot();
+
+        int x0 = firstPointX;
+        int y0 = firstPointY;
+
+        int col2 = slot2 % 9;
+        int row2 = slot2 / 9;
+        int x1 = col2 + offsetX;
+        int y1 = row2 + offsetY;
+
+        // Bresenham's Line Algorithm
+        int dx = Math.abs(x1 - x0);
+        int dy = -Math.abs(y1 - y0);
+        int sx = x0 < x1 ? 1 : -1;
+        int sy = y0 < y1 ? 1 : -1;
+        int err = dx + dy;
+
+        while (true) {
+            setBlock(x0, y0, color);
+            if (x0 == x1 && y0 == y1)
+                break;
+            int e2 = 2 * err;
+            if (e2 >= dy) {
+                err += dy;
+                x0 += sx;
+            }
+            if (e2 <= dx) {
+                err += dx;
+                y0 += sy;
+            }
+        }
+    }
+
+    public void drawRect(int slot2, byte color) {
+        if (firstPointX == -1)
+            return;
+        saveUndoSnapshot();
+
+        int x0 = firstPointX;
+        int y0 = firstPointY;
+
+        int col2 = slot2 % 9;
+        int row2 = slot2 / 9;
+        int x1 = col2 + offsetX;
+        int y1 = row2 + offsetY;
+
+        int minX = Math.min(x0, x1);
+        int maxX = Math.max(x0, x1);
+        int minY = Math.min(y0, y1);
+        int maxY = Math.max(y0, y1);
+
+        // Top and bottom edges
+        for (int x = minX; x <= maxX; x++) {
+            setBlock(x, minY, color);
+            setBlock(x, maxY, color);
+        }
+        // Left and right edges
+        for (int y = minY; y <= maxY; y++) {
+            setBlock(minX, y, color);
+            setBlock(maxX, y, color);
+        }
+    }
+
+    private void setBlock(int blockX, int blockY, byte color) {
         int gridWidth = 128 / ratio;
         int gridHeight = 128 / ratio;
 
-        if (blockX < gridWidth && blockY < gridHeight) {
+        if (blockX >= 0 && blockX < gridWidth && blockY >= 0 && blockY < gridHeight) {
             for (int subY = 0; subY < ratio; subY++) {
                 for (int subX = 0; subX < ratio; subX++) {
                     int px = blockX * ratio + subX;
@@ -170,16 +275,97 @@ public class DrawingGui {
         }
     }
 
-    public void fillPixel(int slot, byte replacementColor) {
+    private void setCanvasItem(int slot, int blockX, int blockY, byte color) {
+        ItemStack item = ColorPalette.getDisplayItem(color);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            int px = blockX * ratio;
+            int py = blockY * ratio;
+            meta.displayName(Component.text("X: " + px + ", Y: " + py, NamedTextColor.GRAY)
+                    .decoration(TextDecoration.ITALIC, false));
+            item.setItemMeta(meta);
+        }
+        inventory.setItem(slot, item);
+    }
+
+    private ItemStack createNamedItem(Material mat, String name) {
+        return createNamedItem(mat, name, NamedTextColor.WHITE);
+    }
+
+    private ItemStack createNamedItem(Material mat, String name, NamedTextColor color) {
+        ItemStack item = new ItemStack(mat);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.displayName(Component.text(name).color(color)
+                    .decoration(TextDecoration.ITALIC, false));
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    public void updateActiveColorDisplay() {
+        ItemStack activeItem = ColorPalette.getDisplayItem(activeColor);
+        ItemMeta meta = activeItem.getItemMeta();
+        if (meta != null) {
+            meta.displayName(Component.text("✏ Selected Colour (Click to Change)")
+                    .color(NamedTextColor.GOLD)
+                    .decoration(TextDecoration.ITALIC, false));
+            activeItem.setItemMeta(meta);
+        }
+        inventory.setItem(50, activeItem);
+    }
+
+    public void setActiveColor(byte color) {
+        this.activeColor = color;
+        updateActiveColorDisplay();
+    }
+
+    public byte getActiveColor() {
+        return activeColor;
+    }
+
+    public byte[] getPixelData() {
+        return pixels;
+    }
+
+    public byte getPixelColorAt(int slot) {
+        if (slot < 0 || slot >= 45)
+            return 0;
+        int col = slot % 9;
+        int row = slot / 9;
+        int blockX = col + offsetX;
+        int blockY = row + offsetY;
+        int gridWidth = 128 / ratio;
+        int gridHeight = 128 / ratio;
+        if (blockX < gridWidth && blockY < gridHeight) {
+            return pixels[blockY * ratio * 128 + blockX * ratio];
+        }
+        return 0;
+    }
+
+    public void setPixel(int slot, byte color) {
         if (slot < 0 || slot >= 45)
             return;
+        saveUndoSnapshot();
 
         int col = slot % 9;
         int row = slot / 9;
-
         int blockX = col + offsetX;
         int blockY = row + offsetY;
 
+        setBlock(blockX, blockY, color);
+        setCanvasItem(slot, blockX, blockY, color);
+    }
+
+    public void fillPixel(int slot, byte replacementColor) {
+        if (slot < 0 || slot >= 45)
+            return;
+        saveUndoSnapshot();
+
+        int col = slot % 9;
+        int row = slot / 9;
+        int blockX = col + offsetX;
+        int blockY = row + offsetY;
         int gridWidth = 128 / ratio;
         int gridHeight = 128 / ratio;
 

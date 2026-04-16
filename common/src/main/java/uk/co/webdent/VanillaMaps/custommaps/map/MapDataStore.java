@@ -57,6 +57,12 @@ public class MapDataStore {
 
             int mapId = view.getId();
 
+            if (isPublished(mapId)) {
+                player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
+                        .deserialize("<red>This map has been published and cannot be overwritten."));
+                return;
+            }
+
             // Store globally
             File mapFile = new File(dataDir, mapId + ".dat");
             try {
@@ -187,5 +193,14 @@ public class MapDataStore {
         for (ItemStack item : player.getInventory().getContents()) {
             migrateItem(item);
         }
+    }
+
+    public boolean isPublished(int mapId) {
+        return new File(dataDir, mapId + ".lock").exists();
+    }
+
+    public void publish(int mapId) throws IOException {
+        File lockFile = new File(dataDir, mapId + ".lock");
+        lockFile.createNewFile();
     }
 }

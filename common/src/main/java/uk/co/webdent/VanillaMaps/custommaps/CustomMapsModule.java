@@ -5,7 +5,7 @@ import uk.co.webdent.VanillaMaps.custommaps.gui.GuiListener;
 import uk.co.webdent.VanillaMaps.custommaps.map.MapDataStore;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class CustomMapsModule implements Listener {
@@ -13,6 +13,7 @@ public class CustomMapsModule implements Listener {
     private static CustomMapsModule instance;
     private final JavaPlugin plugin;
     private MapDataStore mapDataStore;
+    private MapCommand mapCommand;
 
     public CustomMapsModule(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -23,9 +24,10 @@ public class CustomMapsModule implements Listener {
         plugin.saveDefaultConfig();
 
         mapDataStore = new MapDataStore(this);
+        mapCommand = new MapCommand(this);
         plugin.getLifecycleManager()
                 .registerEventHandler(io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents.COMMANDS, event -> {
-                    event.registrar().register("map", "Manage custom maps", new MapCommand(this));
+                    event.registrar().register("map", "Manage custom maps", mapCommand);
                 });
         plugin.getServer().getPluginManager().registerEvents(new GuiListener(this), plugin);
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
@@ -50,9 +52,7 @@ public class CustomMapsModule implements Listener {
     }
 
     @EventHandler
-    public void onPlayerJoin(PlayerJoinEvent event) {
-        // Automatically migrate any legacy maps stored via ItemStack PDC when a player
-        // logs in
-        mapDataStore.migrateInventory(event.getPlayer());
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        mapCommand.clearClipboard(event.getPlayer().getUniqueId());
     }
 }

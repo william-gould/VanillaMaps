@@ -9,6 +9,7 @@ import org.jetbrains.annotations.NotNull;
 public class CustomMapRenderer extends MapRenderer {
 
     private final byte[] pixels;
+    private boolean rendered = false;
 
     public CustomMapRenderer(byte[] pixels) {
         super(false); // isContextual = false
@@ -17,10 +18,12 @@ public class CustomMapRenderer extends MapRenderer {
 
     @Override
     public void render(@NotNull MapView view, @NotNull MapCanvas canvas, @NotNull Player player) {
+        if (rendered) return;
         for (int i = 0; i < pixels.length; i++) {
             int x = i % 128;
             int y = i / 128;
             canvas.setPixel(x, y, pixels[i]);
         }
+        rendered = true;
     }
 }
