@@ -83,17 +83,9 @@ public class MapFont {
                 register('M', new String[] {
                                 "#..#",
                                 "####",
-                                "#..#",
-                                "#..#" // 4x4 M is tough, making it identical to H practically if we can't do middle
-                                       // spike well.
-                });
-                // Actually a better M:
-                register('M', new String[] {
-                                "#..#",
-                                "####",
-                                "#..#",
+                                "#.##",
                                 "#..#"
-                }); // we will just keep it simple
+                });
                 register('N', new String[] {
                                 "##.#",
                                 "#.##",
@@ -261,13 +253,6 @@ public class MapFont {
                                 "###",
                                 "...",
                                 "..."
-                });
-                // Override M to be better slightly:
-                register('M', new String[] {
-                                "#..#",
-                                "####",
-                                "#.##",
-                                "#..#"
                 });
         }
 

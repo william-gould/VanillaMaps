@@ -12,16 +12,20 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.Deque;
 import java.util.List;
 
 public class DrawingGui {
+
     private final Player player;
     private final Inventory inventory;
     private final byte[] pixels;
     private byte activeColor;
 
-    private final int ratio;
+    private final int maxUndoDepth;
+    private int ratio;
     private int offsetX = 0;
     private int offsetY = 0;
 
@@ -29,7 +33,11 @@ public class DrawingGui {
     private ToolsGui.Tool activeTool = ToolsGui.Tool.PENCIL;
     private int firstPointX = -1;
     private int firstPointY = -1;
-    private byte[] undoSnapshot = null;
+
+    private final Deque<byte[]> undoStack = new ArrayDeque<>();
+
+    private ColorPickerGui colorPickerGui;
+    private ToolsGui toolsGui;
 
     public DrawingGui(Player player, int ratio) {
         this(player, ratio, null);
@@ -41,13 +49,14 @@ public class DrawingGui {
         this.inventory = Bukkit.createInventory(new DrawingGuiHolder(this), 54, Component.text("Draw Your Map"));
         this.pixels = new byte[128 * 128];
 
-        String defaultColorName = CustomMapsModule.getInstance().getPlugin().getConfig().getString("default-background",
-                "WHITE");
+        String defaultColorName = CustomMapsModule.getInstance().getPlugin().getConfig()
+                .getString("default-background", "WHITE");
         Material defMat = Material.matchMaterial(defaultColorName + "_WOOL");
         if (defMat == null)
             defMat = Material.WHITE_WOOL;
         this.backgroundColor = ColorPalette.getMapColor(defMat);
         this.activeColor = this.backgroundColor;
+        this.maxUndoDepth = CustomMapsModule.getInstance().getPlugin().getConfig().getInt("undo-depth", 10);
 
         if (existingPixels != null && existingPixels.length == 128 * 128) {
             System.arraycopy(existingPixels, 0, this.pixels, 0, 128 * 128);
@@ -61,6 +70,21 @@ public class DrawingGui {
 
     public void open() {
         player.openInventory(inventory);
+    }
+
+    public int getRatio() {
+        return ratio;
+    }
+
+    public void setRatio(int newRatio) {
+        if (newRatio <= 0 || 128 % newRatio != 0)
+            throw new IllegalArgumentException("ratio must divide 128 evenly, got: " + newRatio);
+        this.ratio = newRatio;
+        int gridWidth = 128 / ratio;
+        int gridHeight = 128 / ratio;
+        offsetX = Math.max(0, Math.min(Math.max(0, gridWidth - 9), offsetX));
+        offsetY = Math.max(0, Math.min(Math.max(0, gridHeight - 5), offsetY));
+        buildCanvas();
     }
 
     public void buildCanvas() {
@@ -77,7 +101,8 @@ public class DrawingGui {
                 ItemMeta meta = item.getItemMeta();
                 if (meta != null) {
                     meta.displayName(
-                            Component.text("POINT 1", NamedTextColor.GREEN).decoration(TextDecoration.BOLD, true)
+                            Component.text("POINT 1", NamedTextColor.GREEN)
+                                    .decoration(TextDecoration.BOLD, true)
                                     .decoration(TextDecoration.ITALIC, false));
                     item.setItemMeta(meta);
                 }
@@ -139,6 +164,7 @@ public class DrawingGui {
     public void setActiveTool(ToolsGui.Tool tool) {
         this.activeTool = tool;
         updateToolsButton();
+        invalidateToolsGui();
     }
 
     public void cycleNextTool() {
@@ -156,20 +182,20 @@ public class DrawingGui {
     }
 
     public void saveUndoSnapshot() {
-        undoSnapshot = new byte[pixels.length];
-        System.arraycopy(pixels, 0, undoSnapshot, 0, pixels.length);
+        if (undoStack.size() >= maxUndoDepth) {
+            undoStack.pollLast(); // evict oldest
+        }
+        byte[] snapshot = new byte[pixels.length];
+        System.arraycopy(pixels, 0, snapshot, 0, pixels.length);
+        undoStack.push(snapshot); // push to head (most recent)
     }
 
     public void undo() {
-        if (undoSnapshot == null)
+        byte[] snapshot = undoStack.poll(); // pop from head
+        if (snapshot == null)
             return;
-        System.arraycopy(undoSnapshot, 0, pixels, 0, pixels.length);
-        undoSnapshot = null;
+        System.arraycopy(snapshot, 0, pixels, 0, pixels.length);
         buildCanvas();
-    }
-
-    public int getRatio() {
-        return ratio;
     }
 
     public byte getBackgroundColor() {
@@ -369,38 +395,53 @@ public class DrawingGui {
         int gridWidth = 128 / ratio;
         int gridHeight = 128 / ratio;
 
-        if (blockX < gridWidth && blockY < gridHeight) {
-            int startX = blockX * ratio;
-            int startY = blockY * ratio;
+        if (blockX >= gridWidth || blockY >= gridHeight)
+            return;
 
-            byte targetColor = pixels[startY * 128 + startX];
-            if (targetColor == replacementColor)
-                return;
+        byte targetColor = pixels[blockY * ratio * 128 + blockX * ratio];
+        if (targetColor == replacementColor)
+            return;
 
-            java.util.Queue<int[]> queue = new java.util.LinkedList<>();
-            queue.add(new int[] { startX, startY });
+        ArrayDeque<int[]> queue = new ArrayDeque<>();
+        queue.add(new int[] { blockX, blockY });
 
-            while (!queue.isEmpty()) {
-                int[] p = queue.poll();
-                int px = p[0];
-                int py = p[1];
+        while (!queue.isEmpty()) {
+            int[] p = queue.poll();
+            int bx = p[0];
+            int by = p[1];
 
-                int index = py * 128 + px;
-                if (pixels[index] == targetColor) {
-                    pixels[index] = replacementColor;
-                    if (px + 1 < 128)
-                        queue.add(new int[] { px + 1, py });
-                    if (px - 1 >= 0)
-                        queue.add(new int[] { px - 1, py });
-                    if (py + 1 < 128)
-                        queue.add(new int[] { px, py + 1 });
-                    if (py - 1 >= 0)
-                        queue.add(new int[] { px, py - 1 });
-                }
-            }
+            if (bx < 0 || bx >= gridWidth || by < 0 || by >= gridHeight)
+                continue;
+            if (pixels[by * ratio * 128 + bx * ratio] != targetColor)
+                continue;
 
-            buildCanvas();
+            setBlock(bx, by, replacementColor);
+
+            queue.add(new int[] { bx + 1, by });
+            queue.add(new int[] { bx - 1, by });
+            queue.add(new int[] { bx, by + 1 });
+            queue.add(new int[] { bx, by - 1 });
         }
+
+        buildCanvas();
+    }
+
+    public ColorPickerGui getColorPickerGui() {
+        if (colorPickerGui == null) {
+            colorPickerGui = new ColorPickerGui(player, this);
+        }
+        return colorPickerGui;
+    }
+
+    public ToolsGui getToolsGui() {
+        if (toolsGui == null) {
+            toolsGui = new ToolsGui(player, this);
+        }
+        return toolsGui;
+    }
+
+    public void invalidateToolsGui() {
+        toolsGui = null;
     }
 
     public void pan(int dx, int dy) {

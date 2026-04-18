@@ -45,6 +45,9 @@ public class VanillaMapsPlugin extends JavaPlugin {
         }
 
         getLogger().info("VanillaMaps loaded!");
+
+        int pluginId = 30813;
+        Metrics metrics = new Metrics(this, pluginId);
     }
 
     @Override

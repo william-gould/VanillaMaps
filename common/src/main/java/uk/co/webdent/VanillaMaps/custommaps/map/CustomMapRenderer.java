@@ -12,17 +12,19 @@ public class CustomMapRenderer extends MapRenderer {
     private boolean rendered = false;
 
     public CustomMapRenderer(byte[] pixels) {
-        super(false); // isContextual = false
+        super(false); // isContextual = false jic
         this.pixels = pixels;
     }
 
     @Override
     public void render(@NotNull MapView view, @NotNull MapCanvas canvas, @NotNull Player player) {
-        if (rendered) return;
-        for (int i = 0; i < pixels.length; i++) {
-            int x = i % 128;
-            int y = i / 128;
-            canvas.setPixel(x, y, pixels[i]);
+        if (rendered)
+            return;
+
+        for (int y = 0; y < 128; y++) {
+            for (int x = 0; x < 128; x++) {
+                canvas.setPixel(x, y, pixels[y * 128 + x]);
+            }
         }
         rendered = true;
     }

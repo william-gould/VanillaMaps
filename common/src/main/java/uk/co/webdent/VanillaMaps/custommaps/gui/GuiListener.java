@@ -27,7 +27,7 @@ public class GuiListener implements Listener {
             DrawingGui gui = holder.getGui();
             int slot = event.getRawSlot();
 
-            if (slot >= 0 && slot < 45) { // Canvas cells
+            if (slot >= 0 && slot < 45) {
                 switch (gui.getActiveTool()) {
                     case PENCIL -> {
                         if (event.isLeftClick()) {
@@ -57,7 +57,8 @@ public class GuiListener implements Listener {
                                 uk.co.webdent.VanillaMaps.custommaps.gui.generator.BackgroundGenerator.BackgroundType.BRICKS);
                     }
                     case TILES -> {
-                        gui.applyBackground(uk.co.webdent.VanillaMaps.custommaps.gui.generator.BackgroundGenerator.BackgroundType.TILES);
+                        gui.applyBackground(
+                                uk.co.webdent.VanillaMaps.custommaps.gui.generator.BackgroundGenerator.BackgroundType.TILES);
                     }
                     case LINE -> {
                         if (event.isRightClick()) {
@@ -85,39 +86,35 @@ public class GuiListener implements Listener {
                     }
                 }
 
-            } else if (slot == 45) { // ⬆ Move Up
+            } else if (slot == 45) {
                 gui.pan(0, event.isShiftClick() ? -5 : -1);
 
-            } else if (slot == 46) { // ⬅ Move Left
+            } else if (slot == 46) {
                 gui.pan(event.isShiftClick() ? -9 : -1, 0);
 
-            } else if (slot == 47) { // ➡ Move Right
+            } else if (slot == 47) {
                 gui.pan(event.isShiftClick() ? 9 : 1, 0);
 
-            } else if (slot == 48) { // ⬇ Move Down
+            } else if (slot == 48) {
                 gui.pan(0, event.isShiftClick() ? 5 : 1);
 
-            } else if (slot == 49) { // 🧰 Tools button
+            } else if (slot == 49) {
                 if (event.isLeftClick()) {
-                    // Open the tools submenu
-                    ToolsGui toolsGui = new ToolsGui(player, gui);
-                    toolsGui.open();
+                    gui.getToolsGui().open();
                 } else if (event.isRightClick()) {
-                    // Cycle to the next tool without opening the submenu
                     gui.cycleNextTool();
                 }
 
-            } else if (slot == 50) { // ✏ Colour picker
-                ColorPickerGui picker = new ColorPickerGui(player, gui);
-                picker.open();
+            } else if (slot == 50) {
+                gui.getColorPickerGui().open();
 
-            } else if (slot == 51) { // ↩ Undo
+            } else if (slot == 51) {
                 gui.undo();
 
-            } else if (slot == 52) { // ✖ Cancel
+            } else if (slot == 52) {
                 player.closeInventory();
 
-            } else if (slot == 53) { // ✔ Save
+            } else if (slot == 53) {
                 plugin.getMapDataStore().save(player, gui);
                 player.closeInventory();
             }
@@ -139,11 +136,10 @@ public class GuiListener implements Listener {
             int slot = event.getRawSlot();
             ToolsGui.Tool[] tools = ToolsGui.Tool.values();
 
-            // Each tool occupies one slot starting at 0
             if (slot >= 0 && slot < tools.length) {
                 ToolsGui.Tool selected = tools[slot];
                 gui.getParentGui().setActiveTool(selected);
-                gui.getParentGui().open(); // Return to drawing canvas
+                gui.getParentGui().open();
             }
         }
     }
