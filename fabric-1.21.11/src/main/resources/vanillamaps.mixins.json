@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "uk.co.webdent.vanillamaps.fabric.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "MapDataLazyMixin",
+    "MapItemSavedDataAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

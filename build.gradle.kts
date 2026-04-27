@@ -1,35 +1,26 @@
 plugins {
-    java
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("com.gradleup.shadow") version "9.3.0"
 }
 
 allprojects {
     group = "uk.co.webdent"
-    version = "1.1.1"
+    version = "1.1.2"
 
     repositories {
         mavenCentral()
         maven("https://repo.papermc.io/repository/maven-public/")
+        maven("https://maven.fabricmc.net/")
+        maven("https://maven.shedaniel.me/")
+        maven("https://maven.terraformersmc.com/releases/")
     }
 }
 
 subprojects {
-    apply(plugin = "java")
-
-    java {
-        toolchain {
-            languageVersion.set(JavaLanguageVersion.of(21))
+    plugins.withType<JavaPlugin> {
+        extensions.configure<JavaPluginExtension>("java") {
+            toolchain {
+                languageVersion.set(JavaLanguageVersion.of(25))
+            }
         }
-    }
-}
-
-dependencies {
-    implementation(project(":common"))
-    implementation(project(":paper-1.21"))
-}
-
-tasks {
-    build {
-        dependsOn(shadowJar)
     }
 }

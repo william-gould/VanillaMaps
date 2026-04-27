@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "vanillamaps",
+  "version": "${version}",
+  "name": "VanillaMaps",
+  "description": "Server-side utility mod with custom maps, player sits, head drops, and admin messaging.",
+  "authors": [
+    "webdent"
+  ],
+  "contact": {},
+  "license": "All-Rights-Reserved",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "uk.co.webdent.vanillamaps.fabric.VanillaMapsMod"
+    ]
+  },
+  "mixins": [
+    "vanillamaps.mixins.json"
+  ],
+  "accessWidener": "vanillamaps.accesswidener",
+  "depends": {
+    "fabricloader": ">=0.18.0",
+    "fabric-api": "*",
+    "minecraft": ">=1.21.11",
+    "java": ">=21"
+  },
+  "suggests": {
+    "cloth-config": "*"
+  }
+}

@@ -1,8 +1,0 @@
-default-background: WHITE
-
-messages:
-  save-success: "<green>Map saved successfully!"
-  not-holding-map: "<red>You must be holding a map."
-  must-be-player: "<red>Only players can use this command."
-
-undo-depth: 5
